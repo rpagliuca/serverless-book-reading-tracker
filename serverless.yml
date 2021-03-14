@@ -1,0 +1,72 @@
+service: serverless-book-reading-tracker
+
+custom:
+  stage: ${opt:stage, self:provider.stage}
+  entriesTable: ${self:service}-${self:custom.stage}-entries-table-v3
+
+provider:
+  name: aws
+  profile: ${file(env.json):AWS_PROFILE}
+  runtime: go1.x
+  memorySize: 128
+  timeout: 1
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:ListTables
+      Resource: "*"
+
+package:
+  exclude:
+    - ./**
+  include:
+    - ./bin/**
+
+functions:
+  main:
+    handler: bin/main
+    events:
+      - http:
+          path: /entries
+          method: post
+          cors: true
+      - http:
+          path: /entries
+          method: get
+          cors: true
+      - http:
+          path: /entries/{uuid}
+          method: patch
+          cors: true
+      - http:
+          path: /entries/{uuid}
+          method: delete
+          cors: true
+      - http:
+          path: /entries/{uuid}
+          method: get
+          cors: true
+    environment:
+      RECORDS_TABLE: ${self:custom.entriesTable}
+
+resources: # CloudFormation template syntax from here on.
+  Resources:
+    entriesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.entriesTable}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: key1
+            AttributeType: S
+          - AttributeName: key2
+            AttributeType: S
+        KeySchema:
+          - AttributeName: key1
+            KeyType: HASH
+          - AttributeName: key2
+            KeyType: RANGE 
