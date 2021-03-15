@@ -20,8 +20,9 @@ func InsertHandler(ctx context.Context, req events.APIGatewayProxyRequest) (
 	if err != nil {
 		return createErrorResponse(500, err)
 	}
-	entry := NewEntryFromEntryInput(auth.UserFromContext(ctx), entryInput)
-	err = domain.InsertEntry(entry)
+	username := auth.UserFromContext(ctx)
+	entry := NewEntryFromEntryInput(username, entryInput)
+	err = domain.InsertEntry(username, entry)
 	if err != nil {
 		return createErrorResponse(500, err)
 	}
@@ -117,6 +118,40 @@ func LoginHandler(ctx context.Context, req events.APIGatewayProxyRequest) (
 		"message":              "OK",
 		"token":                token,
 		"expiration_timestamp": expiration,
+	}
+	return createSuccessResponse(resp)
+}
+
+func PatchOneHandler(ctx context.Context, req events.APIGatewayProxyRequest) (
+	res events.APIGatewayProxyResponse,
+	err error,
+) {
+	// Get ID from URL
+	var input getOneInput
+	err = lmdrouter.UnmarshalRequest(req, false, &input)
+	if err != nil {
+		return lmdrouter.HandleError(err)
+	}
+
+	// Get patched fields from JSON body
+	var entryInput EntryInput
+	err = json.Unmarshal([]byte(req.Body), &entryInput)
+	if err != nil {
+		return createErrorResponse(500, err)
+	}
+
+	// Call domain
+	username := auth.UserFromContext(ctx)
+	entry := NewEntryFromEntryInput(username, entryInput)
+	entry.ID = &input.UUID
+	err = domain.PatchEntry(username, entry)
+
+	if err != nil {
+		return createErrorResponse(500, err)
+	}
+	resp := map[string]interface{}{
+		"success": true,
+		"message": "OK",
 	}
 	return createSuccessResponse(resp)
 }

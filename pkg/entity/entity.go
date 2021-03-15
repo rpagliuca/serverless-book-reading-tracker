@@ -5,6 +5,21 @@ import "time"
 type RecordNotFound error
 type MoreThanOneRecordFound error
 
+type Property int
+
+const (
+	Username Property = iota
+	ID
+	BookID
+	StartTime
+	EndTime
+	StartLocation
+	EndLocation
+	DateCreated
+	DateModified
+	Version
+)
+
 type Entry struct {
 	Username      *string    `json:"username"`
 	ID            *string    `json:"id"`

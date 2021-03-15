@@ -3,6 +3,7 @@ package persistence
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -86,18 +87,26 @@ func ListEntries(username string) ([]entity.Entry, error) {
 	return list, nil
 }
 
+func strValue(m map[string]*dynamodb.AttributeValue, key string) *string {
+	if v, ok := m[key]; ok {
+		return v.S
+	}
+	var empty string
+	return &empty
+}
+
 func NewEntryFromItem(m map[string]*dynamodb.AttributeValue) entity.Entry {
 	return entity.Entry{
-		ID:            m["id"].S,
-		Username:      m["username"].S,
-		BookID:        m["book_id"].S,
-		StartTime:     toTime(m["start_time"].S),
-		EndTime:       toTime(m["end_time"].S),
-		StartLocation: toInt(m["start_location"].S),
-		EndLocation:   toInt(m["end_location"].S),
-		DateCreated:   toTime(m["date_created"].S),
-		DateModified:  toTime(m["date_modified"].S),
-		Version:       toInt(m["version"].S),
+		ID:            strValue(m, "id"),
+		Username:      strValue(m, "username"),
+		BookID:        strValue(m, "book_id"),
+		StartTime:     toTime(strValue(m, "start_time")),
+		EndTime:       toTime(strValue(m, "end_time")),
+		StartLocation: toInt(strValue(m, "start_location")),
+		EndLocation:   toInt(strValue(m, "end_location")),
+		DateCreated:   toTime(strValue(m, "date_created")),
+		DateModified:  toTime(strValue(m, "date_modified")),
+		Version:       toInt(strValue(m, "version")),
 	}
 }
 
@@ -155,6 +164,85 @@ func DeleteOneEntry(username, UUID string) error {
 
 	_, err := svc.DeleteItem(input)
 
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type Key string
+
+const (
+	KeyVersion       Key = "version"
+	KeyStartLocation Key = "start_location"
+	KeyStartTime     Key = "start_time"
+	KeyEndLocation   Key = "end_location"
+	KeyEndTime       Key = "end_time"
+	KeyBookID        Key = "book_id"
+	KeyDateModified  Key = "date_modified"
+)
+
+type KeyWithValue struct {
+	Key   Key
+	Value *dynamodb.AttributeValue
+}
+
+var propGetter = map[entity.Property]func(entity.Entry) KeyWithValue{
+	entity.Version: func(e entity.Entry) KeyWithValue {
+		return KeyWithValue{KeyVersion, str(e.Version)}
+	},
+	entity.StartLocation: func(e entity.Entry) KeyWithValue {
+		return KeyWithValue{KeyStartLocation, str(e.StartLocation)}
+	},
+	entity.StartTime: func(e entity.Entry) KeyWithValue {
+		return KeyWithValue{KeyStartTime, str(e.StartTime)}
+	},
+	entity.EndLocation: func(e entity.Entry) KeyWithValue {
+		return KeyWithValue{KeyEndLocation, str(e.EndLocation)}
+	},
+	entity.EndTime: func(e entity.Entry) KeyWithValue {
+		return KeyWithValue{KeyEndTime, str(e.EndTime)}
+	},
+	entity.BookID: func(e entity.Entry) KeyWithValue {
+		return KeyWithValue{KeyBookID, str(e.BookID)}
+	},
+	entity.DateModified: func(e entity.Entry) KeyWithValue {
+		return KeyWithValue{KeyDateModified, str(e.DateModified)}
+	},
+}
+
+func PatchEntry(entry entity.Entry, patchedProperties []entity.Property) error {
+	sess := session.Must(session.NewSession())
+	svc := dynamodb.New(sess)
+
+	if len(patchedProperties) < 1 {
+		return errors.New("At least one patched property is required")
+	}
+
+	updateExpressionParts := []string{}
+	attributeValues := map[string]*dynamodb.AttributeValue{}
+	for i, p := range patchedProperties {
+		keyWithValue := propGetter[p](entry)
+		uniqueKey := fmt.Sprintf(":value%d", i)
+		attributeValues[uniqueKey] = keyWithValue.Value
+		updateExpressionParts = append(updateExpressionParts, string(keyWithValue.Key)+"="+uniqueKey)
+	}
+
+	partsJoined := strings.Join(updateExpressionParts, ", ")
+
+	updateExpression := "SET " + partsJoined
+
+	// Update
+	input := &dynamodb.UpdateItemInput{
+		TableName: aws.String(entriesTable),
+		Key: map[string]*dynamodb.AttributeValue{
+			"username": str(entry.Username),
+			"id":       str(entry.ID),
+		},
+		UpdateExpression:          aws.String(updateExpression),
+		ExpressionAttributeValues: attributeValues}
+	_, err := svc.UpdateItem(input)
 	if err != nil {
 		return err
 	}

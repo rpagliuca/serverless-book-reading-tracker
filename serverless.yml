@@ -20,7 +20,7 @@ provider:
           - dynamodb:GetItem
           - dynamodb:PutItem
           - dynamodb:DeleteItem
-          - dynamodb:ListTables
+          - dynamodb:UpdateItem
         Resource: "*"
   # Enable future standards to avoid deprecation warnings
   lambdaHashingVersion: 20201221
