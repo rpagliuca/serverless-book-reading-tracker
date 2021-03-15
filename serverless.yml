@@ -2,7 +2,7 @@ service: serverless-book-reading-tracker
 
 custom:
   stage: ${opt:stage, self:provider.stage}
-  entriesTable: ${self:service}-${self:custom.stage}-entries-table-v3
+  entriesTable: ${self:service}-${self:custom.stage}-entries-table-v4
 
 provider:
   name: aws
@@ -10,15 +10,22 @@ provider:
   runtime: go1.x
   memorySize: 128
   timeout: 1
-  iamRoleStatements:
-    - Effect: Allow
-      Action:
-        - dynamodb:Query
-        - dynamodb:Scan
-        - dynamodb:GetItem
-        - dynamodb:PutItem
-        - dynamodb:ListTables
-      Resource: "*"
+  iam:
+    role:
+      statements:
+      - Effect: Allow
+        Action:
+          - dynamodb:Query
+          - dynamodb:Scan
+          - dynamodb:GetItem
+          - dynamodb:PutItem
+          - dynamodb:DeleteItem
+          - dynamodb:ListTables
+        Resource: "*"
+  # Enable future standards to avoid deprecation warnings
+  lambdaHashingVersion: 20201221
+  apiGateway:
+    shouldStartNameWithService: true
 
 package:
   exclude:
@@ -50,8 +57,12 @@ functions:
           path: /entries/{uuid}
           method: get
           cors: true
+      - http:
+          path: /login
+          method: post
+          cors: true
     environment:
-      RECORDS_TABLE: ${self:custom.entriesTable}
+      ENTRIES_TABLE: ${self:custom.entriesTable}
 
 resources: # CloudFormation template syntax from here on.
   Resources:
@@ -61,12 +72,12 @@ resources: # CloudFormation template syntax from here on.
         TableName: ${self:custom.entriesTable}
         BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
-          - AttributeName: key1
+          - AttributeName: username
             AttributeType: S
-          - AttributeName: key2
+          - AttributeName: id
             AttributeType: S
         KeySchema:
-          - AttributeName: key1
+          - AttributeName: username
             KeyType: HASH
-          - AttributeName: key2
+          - AttributeName: id
             KeyType: RANGE 

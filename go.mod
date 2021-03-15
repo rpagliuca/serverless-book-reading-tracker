@@ -1,4 +1,4 @@
-module go-uniswap-etherscan-aws-serverless
+module github.com/rpagliuca/serverless-book-reading-tracker
 
 go 1.14
 

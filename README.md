@@ -34,7 +34,7 @@
 
 200:
 {
-    "ok": true,
+    "success": true,
     "entries": [
         {
             "id": "38d6fc1d-abd0-4487-8536-14297ab6abd8",
