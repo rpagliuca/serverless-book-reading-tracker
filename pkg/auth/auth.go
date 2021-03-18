@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
-	"time"
 
 	"github.com/aquasecurity/lmdrouter"
 	"github.com/aws/aws-lambda-go/events"
@@ -53,19 +52,8 @@ func extractToken(authHeader string) (string, error) {
 	return parts[1], nil
 }
 
-var DURATION_VALID_SECONDS = 60 * 60
-var TOKEN = "YABADABADOO"
-
-func GetToken(user, password string) (token string, timestamp int) {
-	expiration := int(time.Now().Unix()) + DURATION_VALID_SECONDS
-	return TOKEN, expiration
-}
-
 func ParseToken(token string) (isValid bool, username string) {
-	if token == TOKEN {
-		return true, "rafpag"
-	}
-	return false, ""
+	return googleOAuthTokenParser(token)
 }
 
 func createErrorResponse(statusCode int, err error) (Response, error) {

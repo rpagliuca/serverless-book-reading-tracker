@@ -20,7 +20,6 @@ func init() {
 	router.Route("GET", "/entries/:uuid", controller.GetOneHandler, auth.AuthMiddleware)
 	router.Route("DELETE", "/entries/:uuid", controller.DeleteOneHandler, auth.AuthMiddleware)
 	router.Route("PATCH", "/entries/:uuid", controller.PatchOneHandler, auth.AuthMiddleware)
-	router.Route("POST", "/login", controller.LoginHandler)
 }
 
 // Allow mocking

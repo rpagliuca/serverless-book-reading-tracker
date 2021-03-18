@@ -103,25 +103,6 @@ type loginInput struct {
 	Password string `json:"password"`
 }
 
-func LoginHandler(ctx context.Context, req events.APIGatewayProxyRequest) (
-	res events.APIGatewayProxyResponse,
-	err error,
-) {
-	var input loginInput
-	err = json.Unmarshal([]byte(req.Body), &input)
-	if err != nil {
-		return createErrorResponse(500, err)
-	}
-	token, expiration := auth.GetToken(input.Username, input.Password)
-	resp := map[string]interface{}{
-		"success":              true,
-		"message":              "OK",
-		"token":                token,
-		"expiration_timestamp": expiration,
-	}
-	return createSuccessResponse(resp)
-}
-
 func PatchOneHandler(ctx context.Context, req events.APIGatewayProxyRequest) (
 	res events.APIGatewayProxyResponse,
 	err error,
